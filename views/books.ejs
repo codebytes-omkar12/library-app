@@ -10,14 +10,20 @@
     <div class="container mt-4">
         <div class="d-flex justify-content-between align-items-center">
     <h1><%= title %></h1>
+   
     <div>
-        <% if (user && user.roles.includes('Librarian')) { %>
-            <a href="/books/new" class="btn btn-primary">Add New Book</a>
+    <a href="/my-loans" class="btn btn-info">My Loans</a>
+ <% if (user && user.roles.includes('Librarian')) { %>
+            <a href="/manage-loans" class="btn btn-warning">Manage Loans</a>
+            
         <% } %>
-        <form action="/logout" method="POST" style="display: inline;">
-            <button type="submit" class="btn btn-secondary">Logout</button>
-        </form>
-    </div>
+    <% if (user && user.roles.includes('Librarian')) { %>
+        <a href="/books/new" class="btn btn-primary">Add New Book</a>
+    <% } %>
+    <form action="/logout" method="POST" style="display: inline;">
+        <button type="submit" class="btn btn-secondary">Logout</button>
+    </form>
+</div>
 </div>
         <hr>
         <table class="table table-striped mt-3">
@@ -28,19 +34,27 @@
                     <th>Available</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody >
                 <% if (books.length > 0) { %>
                     <% books.forEach(book => { %>
                         <tr>
                             <td><%= book.title %></td>
                             <td><%= book.author %></td>
                             <td><%= book.quantity_available %></td>
-                            <td><% if (user && user.roles.includes('Librarian')) { %>
+                            <td class="d-flex gap-2" >
+                                <% if (user && user.roles.includes('Librarian')) { %>
                     <a href="/books/edit/<%= book.book_id %>" class="btn btn-warning btn-sm">Edit</a>
                     <button class="btn btn-danger btn-sm delete-btn" data-id="<%= book.book_id %>">
                         Delete
                     </button>
-                <% } %></td>
+                     <% if (user && user.roles.includes('Member') && book.quantity_available > 0) { %>
+        <form action="/books/borrow/<%= book.book_id %>" method="POST">
+            <button type="submit" class="btn btn-success btn-sm">Borrow</button>
+        </form>
+    <% } %>
+                <% } %>
+           
+</td>
                         </tr>
                     <% }); %>
                 <% } else { %>

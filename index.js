@@ -212,6 +212,130 @@ app.post('/logout', (req, res) => {
         res.redirect('/login');
     });
 });
+// POST route for a user to borrow a book
+app.post('/books/borrow/:id', requireLogin, requireRole('Member'), async (req, res) => {
+    const bookId = req.params.id;
+    const userId = req.session.user.id;
+    let connection;
+
+    try {
+        // Get a connection from the pool to run the transaction
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        // 1. Decrement the quantity in the books table
+        const updateBookSql = "UPDATE books SET quantity_available = quantity_available - 1 WHERE book_id = ? AND quantity_available > 0";
+        const [updateResult] = await connection.query(updateBookSql, [bookId]);
+
+        if (updateResult.affectedRows === 0) {
+            // This means the book was already gone, so undo the transaction
+            await connection.rollback();
+            return res.status(400).send("Book is no longer available.");
+        }
+
+        // 2. Insert a new record into the book_loans table
+        const loanSql = "INSERT INTO book_loans (book_id, user_id, loan_date, due_date) VALUES (?, ?, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 14 DAY))";
+        await connection.query(loanSql, [bookId, userId]);
+
+        // If both queries succeed, save the changes
+        await connection.commit();
+        
+        res.redirect('/books');
+
+    } catch (err) {
+        // If any error occurs, undo the transaction
+        if (connection) await connection.rollback();
+        console.error("Borrowing failed:", err);
+        res.status(500).send("Error processing your request.");
+    } finally {
+        // Always release the connection back to the pool
+        if (connection) connection.release();
+    }
+});
+// GET route to show a user's borrowed books
+app.get('/my-loans', requireLogin, noCache, async (req, res) => {
+    const userId = req.session.user.id;
+    const sql = `
+        SELECT b.title, b.author, bl.loan_date, bl.due_date
+        FROM book_loans bl
+        JOIN books b ON bl.book_id = b.book_id
+        WHERE bl.user_id = ? AND bl.return_date IS NULL
+        ORDER BY bl.due_date ASC
+    `;
+
+    try {
+        const [loans] = await db.query(sql, [userId]);
+        res.render('my-loans', {
+            title: 'My Borrowed Books',
+            loans: loans,
+            user: req.session.user
+        });
+    } catch (err) {
+        console.error("Failed to fetch loans:", err);
+        res.status(500).send("Error retrieving your loans.");
+    }
+});
+app.get('/manage-loans', requireLogin, requireRole('Librarian'), noCache, async (req, res) => {
+    const sql = `
+        SELECT bl.loan_id, b.title, u.username, bl.loan_date, bl.due_date
+        FROM book_loans bl
+        JOIN books b ON bl.book_id = b.book_id
+        JOIN users u ON bl.user_id = u.user_id
+        WHERE bl.return_date IS NULL
+        ORDER BY bl.due_date ASC
+    `;
+
+    try {
+        const [loans] = await db.query(sql);
+        res.render('manage-loans', {
+            title: 'Manage Active Loans',
+            loans: loans,
+            user: req.session.user
+        });
+    } catch (err) {
+        console.error("Failed to fetch loans:", err);
+        res.status(500).send("Error retrieving loan data.");
+    }
+});
+// POST route for a librarian to mark a book as returned
+app.post('/loans/return/:id', requireLogin, requireRole('Librarian'), async (req, res) => {
+    const loanId = req.params.id;
+    let connection;
+
+    try {
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        // 1. Get the book_id from the loan before we update it
+        const [rows] = await connection.query("SELECT book_id FROM book_loans WHERE loan_id = ? AND return_date IS NULL", [loanId]);
+        
+        if (rows.length === 0) {
+            await connection.rollback();
+            return res.status(404).send("Loan not found or already returned.");
+        }
+        const bookId = rows[0].book_id;
+
+        // 2. Update the book_loans table to mark the book as returned
+        const returnSql = "UPDATE book_loans SET return_date = CURDATE() WHERE loan_id = ?";
+        await connection.query(returnSql, [loanId]);
+
+        // 3. Increment the quantity in the books table
+        const updateBookSql = "UPDATE books SET quantity_available = quantity_available + 1 WHERE book_id = ?";
+        await connection.query(updateBookSql, [bookId]);
+
+        // If all queries succeed, commit the transaction
+        await connection.commit();
+        
+        res.redirect('/manage-loans');
+
+    } catch (err) {
+        if (connection) await connection.rollback();
+        console.error("Return failed:", err);
+        res.status(500).send("Error processing return.");
+    } finally {
+        if (connection) connection.release();
+    }
+});
 app.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);
 });
