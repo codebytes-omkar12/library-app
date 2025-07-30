@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axiosConfig.js'
 import { useNavigate, useParams, Link } from 'react-router-dom';
 
 const EditBook = () => {
@@ -13,7 +13,7 @@ const EditBook = () => {
     useEffect(() => {
         const fetchBook = async () => {
             try {
-                const response = await axios.get(`/api/books/${id}`);
+                const response = await api.get(`/api/books/${id}`);
                 const book = response.data;
                 setTitle(book.title);
                 setAuthor(book.author);
@@ -28,7 +28,7 @@ const EditBook = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.put(`/api/books/${id}`, { title, author, quantity_available: quantity });
+            await api.put(`/api/books/${id}`, { title, author, quantity_available: quantity });
             navigate('/books');
         } catch (err) {
             setError('Failed to update book.');

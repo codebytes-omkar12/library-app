@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axiosConfig.js'
 import { Link, useNavigate } from 'react-router-dom';
 
 const AdminUsers = () => {
@@ -11,7 +11,7 @@ const AdminUsers = () => {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                const response = await axios.get('/api/admin/users');
+                const response = await api.get('/api/admin/users');
                 setUsers(response.data.users.map(u => ({ ...u, roles: u.roles ? u.roles.split(',') : [] })));
                 setAllRoles(response.data.allRoles);
             } catch (err) {
@@ -45,7 +45,7 @@ const AdminUsers = () => {
         }).filter(id => id !== null);
 
         try {
-            await axios.post(`/api/admin/users/update-roles/${userId}`, { roles: roleIds });
+            await api.post(`/api/admin/users/update-roles/${userId}`, { roles: roleIds });
             alert('Roles updated successfully!');
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to update roles.');

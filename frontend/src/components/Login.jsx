@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../api/axiosConfig.js'
 import { useNavigate, Link } from 'react-router-dom';
 
 const Login = () => {
@@ -12,7 +12,7 @@ const Login = () => {
         e.preventDefault();
         setError('');
         try {
-            const response = await axios.post('/api/login', { username, password });
+            const response = await api.post('/api/login', { username, password });
             if (response.data.success) {
                 navigate('/books');
             }

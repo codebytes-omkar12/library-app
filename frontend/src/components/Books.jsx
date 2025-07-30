@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axiosConfig.js'
 import { useNavigate, Link } from 'react-router-dom';
 
 const Books = () => {
@@ -12,7 +12,7 @@ const Books = () => {
     useEffect(() => {
         const fetchBooks = async () => {
             try {
-                const response = await axios.get('/api/books');
+                const response = await api.get('/api/books');
                 setBooks(response.data.books);
                 setUser(response.data.user);
             } catch (err) {
@@ -29,7 +29,7 @@ const Books = () => {
 
     const handleLogout = async () => {
         try {
-            await axios.post('/api/logout');
+            await api.post('/api/logout');
             navigate('/login');
         } catch (err) {
             setError('Logout failed. Please try again.');
@@ -39,7 +39,7 @@ const Books = () => {
     const handleDelete = async (bookId) => {
         if (window.confirm('Are you sure you want to delete this book?')) {
             try {
-                await axios.delete(`/api/books/${bookId}`);
+                await api.delete(`/api/books/${bookId}`);
                 // Refresh the book list by filtering out the deleted book
                 setBooks(books.filter(b => b.book_id !== bookId));
             } catch (err) {
@@ -107,7 +107,7 @@ const Books = () => {
                                         <form onSubmit={async (e) => {
                                             e.preventDefault();
                                             try {
-                                                await axios.post(`/api/books/borrow/${book.book_id}`);
+                                                await api.post(`/api/books/borrow/${book.book_id}`);
                                                 // Optimistically update the UI
                                                 setBooks(books.map(b => b.book_id === book.book_id ? {...b, quantity_available: b.quantity_available - 1} : b));
                                             } catch (err) {

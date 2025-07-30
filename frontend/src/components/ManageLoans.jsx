@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axiosConfig.js'
 import { Link, useNavigate } from 'react-router-dom';
 
 const ManageLoans = () => {
@@ -10,7 +10,7 @@ const ManageLoans = () => {
     useEffect(() => {
         const fetchAllLoans = async () => {
             try {
-                const response = await axios.get('/api/manage-loans');
+                const response = await api.get('/api/manage-loans');
                 setLoans(response.data);
             } catch (err) {
                  if (err.response && err.response.status === 401) {
@@ -25,7 +25,7 @@ const ManageLoans = () => {
 
     const handleReturn = async (loanId) => {
         try {
-            await axios.post(`/api/loans/return/${loanId}`);
+            await api.post(`/api/loans/return/${loanId}`);
             // Remove the returned loan from the list to update the UI
             setLoans(loans.filter(loan => loan.loan_id !== loanId));
         } catch (err) {

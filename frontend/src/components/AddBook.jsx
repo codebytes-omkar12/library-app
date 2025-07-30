@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../api/axiosConfig.js'
 import { useNavigate, Link } from 'react-router-dom';
 
 const AddBook = () => {
@@ -12,7 +12,7 @@ const AddBook = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('/api/books', { title, author, quantity_available: quantity });
+            await api.post('/api/books', { title, author, quantity_available: quantity });
             navigate('/books');
         } catch (err) {
             setError('Failed to add book. Please check your permissions.');

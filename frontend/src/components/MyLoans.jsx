@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axiosConfig.js'
 import { Link, useNavigate } from 'react-router-dom';
 
 const MyLoans = () => {
@@ -10,7 +10,7 @@ const MyLoans = () => {
     useEffect(() => {
         const fetchLoans = async () => {
             try {
-                const response = await axios.get('/api/my-loans');
+                const response = await api.get('/api/my-loans');
                 setLoans(response.data);
             } catch (err) {
                 if (err.response && err.response.status === 401) {
