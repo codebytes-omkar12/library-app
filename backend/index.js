@@ -1,24 +1,45 @@
 const express = require('express');
 const path = require('path');
-const db = require('./db'); // Import the database connection
+const db = require('./db');
 const bcrypt = require('bcrypt');
 const session = require('express-session');
+const cors = require('cors'); // 1. Import the cors package
 const app = express();
 const port = 3000;
 
-// Middleware
+// --- Middleware ---
+
+// 2. Configure and use the cors middleware
+// This will allow requests from your frontend on localhost:3001
+app.use(cors({
+    origin: 'http://localhost:3001', // Allow the frontend origin
+    credentials: true // Allow cookies to be sent
+}));
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.use(session({
+    secret: 'a_secret_key_to_sign_the_cookie',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 }
+}));
+
 const requireLogin = (req, res, next) => {
     if (!req.session.isLoggedIn) {
         return res.status(401).json({ message: 'You must be logged in.' });
     }
     next();
 };
+
 const noCache = (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     next();
 };
+
 const requireRole = (role) => {
     return (req, res, next) => {
         if (!req.session.user || !req.session.user.roles.includes(role)) {
@@ -28,17 +49,8 @@ const requireRole = (role) => {
     };
 };
 
-app.use(express.json()); // Use express.json() to parse JSON bodies
-app.use(express.urlencoded({ extended: true }));
 
-app.use(session({
-    secret: 'a_secret_key_to_sign_the_cookie',
-    resave: false,
-    saveUninitialized: false,
-    cookie: { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 } // 1 day
-}));
-
-// API Routes
+// --- API Routes ---
 
 // GET all books
 app.get('/api/books', noCache, requireLogin, async (req, res) => {
@@ -173,7 +185,7 @@ app.post('/api/logout', (req, res) => {
         if (err) {
             return res.status(500).json({ message: 'Could not log out, please try again.' });
         }
-        res.clearCookie('connect.sid'); // The default session cookie name
+        res.clearCookie('connect.sid'); 
         res.json({ success: true, message: "Logged out successfully" });
     });
 });

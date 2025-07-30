@@ -3,17 +3,18 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-  "test": "echo \"Error: no test specified\" && exit 1",
-  "start": "node index.js",
-  "frontend": "npm start --prefix ../frontend",
-  "dev": "concurrently \"npm run start\" \"npm run frontend\""
-},
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "frontend": "npm start --prefix ../frontend",
+    "dev": "concurrently \"npm run start\" \"npm run frontend\""
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "express-session": "^1.18.2",
