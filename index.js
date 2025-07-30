@@ -40,13 +40,21 @@ app.use(session({
     resave: false,
     saveUninitialized: false
 }));
+
+
+
 app.set('view engine', 'ejs');
+
+
 app.set('views', path.join(__dirname, 'views'));
+
 
 // A simple welcome route
 app.get('/', (req, res) => {
     res.render('index', { title: 'Welcome to the Library' });
 });
+
+
 app.get('/books',noCache, requireLogin,async(req,res)=>{
     try{
         const sql="SELECT * FROM books ORDER BY title ASC";
@@ -62,6 +70,7 @@ app.get('/books',noCache, requireLogin,async(req,res)=>{
     }
 })
 
+
 app.post('/books/delete/:id',noCache,requireRole('Librarian'), requireLogin,async(req,res)=>{
     const bookId=req.params.id;
     const sql="DELETE FROM books WHERE book_id=?"
@@ -73,6 +82,9 @@ app.post('/books/delete/:id',noCache,requireRole('Librarian'), requireLogin,asyn
         res.status(500).send("Error Deleting Data");
     }
 })
+
+
+
 app.get('/books/edit/:id',noCache,requireRole('Librarian'), requireLogin,async(req,res)=>{
     const bookId=req.params.id;
     const sql="SELECT * FROM books WHERE book_id=?"
@@ -90,6 +102,9 @@ app.get('/books/edit/:id',noCache,requireRole('Librarian'), requireLogin,async(r
     }
 })
 
+
+
+
 app.post('/books/update/:id',noCache,requireRole('Librarian'), requireLogin, async (req, res) => {
     const bookId = req.params.id;
     const { title, author, quantity_available } = req.body;
@@ -103,9 +118,15 @@ app.post('/books/update/:id',noCache,requireRole('Librarian'), requireLogin, asy
         res.status(500).send('Error updating book.');
     }
 });
+
+
+
 app.get('/books/new',noCache, requireLogin,requireRole('Librarian'), (req, res) => {
     res.render('add-book', { title: 'Add a New Book' });
 })
+
+
+
 // POST route to handle adding a new book
 app.post('/books',noCache, requireLogin,requireRole('Librarian'), async (req, res) => {
     const { title, author, quantity_available } = req.body;
@@ -119,10 +140,16 @@ app.post('/books',noCache, requireLogin,requireRole('Librarian'), async (req, re
         res.status(500).send("Error adding book.");
     }
 });
+
+
+
 // GET route to show the registration form
 app.get('/register', (req, res) => {
     res.render('register', { title: 'Register' });
 });
+
+
+
 
 // POST route to handle user registration
 app.post('/register', async (req, res) => {
@@ -156,11 +183,16 @@ app.post('/register', async (req, res) => {
         res.status(500).send("Error registering user.");
     }
 });
+
+
+
 // GET route to show the login form
 app.get('/login', (req, res) => {
     res.render('login', { title: 'Login' });
 });
-// POST route to handle login
+
+
+
 // POST route to handle login
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
@@ -203,6 +235,9 @@ app.post('/login', async (req, res) => {
         res.status(500).send("An error occurred during login.");
     }
 });
+
+
+
 app.post('/logout', (req, res) => {
     req.session.destroy(err => {
         if (err) {
@@ -212,6 +247,8 @@ app.post('/logout', (req, res) => {
         res.redirect('/login');
     });
 });
+
+
 // POST route for a user to borrow a book
 app.post('/books/borrow/:id', requireLogin, requireRole('Member'), async (req, res) => {
     const bookId = req.params.id;
@@ -252,6 +289,8 @@ app.post('/books/borrow/:id', requireLogin, requireRole('Member'), async (req, r
         if (connection) connection.release();
     }
 });
+
+
 // GET route to show a user's borrowed books
 app.get('/my-loans', requireLogin, noCache, async (req, res) => {
     const userId = req.session.user.id;
@@ -275,6 +314,8 @@ app.get('/my-loans', requireLogin, noCache, async (req, res) => {
         res.status(500).send("Error retrieving your loans.");
     }
 });
+
+
 app.get('/manage-loans', requireLogin, requireRole('Librarian'), noCache, async (req, res) => {
     const sql = `
         SELECT bl.loan_id, b.title, u.username, bl.loan_date, bl.due_date
@@ -297,6 +338,8 @@ app.get('/manage-loans', requireLogin, requireRole('Librarian'), noCache, async 
         res.status(500).send("Error retrieving loan data.");
     }
 });
+
+
 // POST route for a librarian to mark a book as returned
 app.post('/loans/return/:id', requireLogin, requireRole('Librarian'), async (req, res) => {
     const loanId = req.params.id;
@@ -336,6 +379,63 @@ app.post('/loans/return/:id', requireLogin, requireRole('Librarian'), async (req
         if (connection) connection.release();
     }
 });
+app.get('/admin/users',requireLogin,requireRole('Admin'),async(req,res)=>{
+    try{
+        const userSql='SELECT u.user_id,u.username,u.email,GROUP_CONCAT(r.role_name) AS roles FROM users u LEFT JOIN user_roles ur on u.user_id=ur.user_id LEFT JOIN roles r on ur.role_id=r.role_id GROUP BY u.user_id ORDER BY u.username';
+         const [users] = await db.query(userSql);
+
+        // Get all possible roles to create the checkboxes
+        const [allRoles] = await db.query("SELECT * FROM roles");
+
+        res.render('admin-users', {
+            title: 'Manage Users',
+            users: users,
+            allRoles: allRoles,
+            user: req.session.user
+        });
+    } catch (err) {
+        console.error("Failed to fetch users for admin panel:", err);
+        res.status(500).send("Error loading admin panel.");
+    }
+})
+app.post('/admin/users/update-roles/:id',requireLogin,requireRole('Admin'),async(req,res)=>{
+    const userIdToUpdate=req.params.id;
+    const loggedInUserId=req.session.user.id;
+    let newRoleIds=req.body.roles || [];
+     if(!Array.isArray(newRoleIds)){
+        newRoleIds=[newRoleIds];
+     }
+     try{
+        const [adminRoleRows]=await db.query("SELECT role_id FROM roles WHERE role_name='Admin'")
+        const adminRoleId=adminRoleRows[0].role_id.toString();
+        if (Number(userIdToUpdate) === loggedInUserId && !newRoleIds.includes(adminRoleId)) {
+            return res.status(400).send("Error: You cannot remove your own Admin role.");
+        }
+     }catch(err){
+            return res.status(500).send("Error Validating Role Update")
+     }
+     let connection;
+    try {
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+        await connection.query("DELETE FROM user_roles WHERE user_id = ?", [userIdToUpdate]);
+
+        if (newRoleIds.length > 0) {
+            const insertValues = newRoleIds.map(roleId => [userIdToUpdate, roleId]);
+            await connection.query("INSERT INTO user_roles (user_id, role_id) VALUES ?", [insertValues]);
+        }
+
+        await connection.commit();
+        res.redirect('/admin/users');
+        
+    } catch (err) {
+        if (connection) await connection.rollback();
+        console.error("Role update failed:", err);
+        res.status(500).send("Error updating roles.");
+    } finally {
+        if (connection) connection.release();
+    }
+})
 app.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);
 });
