@@ -59,7 +59,10 @@ const Books = () => {
             
             {/* Header and Navigation */}
             <div className="flex justify-between items-center mb-4">
-                <h1 className="text-3xl font-bold">Available Books</h1>
+                {/* <h1 className="text-3xl font-bold">Available Books</h1> */}
+                 <h2 className="text-3xl  font-bold">
+                    Welcome {user.roles[0]} {user.username}
+                </h2>
                 <div className="flex items-center gap-2">
                     {user.roles.includes('Admin') && <Link to="/admin/users" className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Admin Panel</Link>}
                     {user.roles.includes('Librarian') && <Link to="/manage-loans" className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded">Manage Loans</Link>}
