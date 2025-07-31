@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import api from '../api/axiosConfig.js'
+// 1. Make sure to import your custom api instance
+import api from '../api/axiosConfig'; 
 import { useNavigate, Link } from 'react-router-dom';
 
 const Books = () => {
@@ -8,17 +9,16 @@ const Books = () => {
     const [error, setError] = useState('');
     const navigate = useNavigate();
 
-    // Fetch book data when the component loads
     useEffect(() => {
         const fetchBooks = async () => {
             try {
+                // 2. This call is already correct if you've been following along
                 const response = await api.get('/api/books');
                 setBooks(response.data.books);
                 setUser(response.data.user);
             } catch (err) {
-                // If the user is not logged in, the API will send a 401 error
                 if (err.response && err.response.status === 401) {
-                    navigate('/login'); // Redirect to login
+                    navigate('/login');
                 } else {
                     setError('Could not fetch books.');
                 }
@@ -29,6 +29,7 @@ const Books = () => {
 
     const handleLogout = async () => {
         try {
+            // 3. Update the logout call to use 'api'
             await api.post('/api/logout');
             navigate('/login');
         } catch (err) {
@@ -39,8 +40,8 @@ const Books = () => {
     const handleDelete = async (bookId) => {
         if (window.confirm('Are you sure you want to delete this book?')) {
             try {
+                // 4. THE MAIN FIX: Update the delete call to use 'api'
                 await api.delete(`/api/books/${bookId}`);
-                // Refresh the book list by filtering out the deleted book
                 setBooks(books.filter(b => b.book_id !== bookId));
             } catch (err) {
                 setError('Failed to delete book.');
@@ -48,21 +49,32 @@ const Books = () => {
         }
     };
 
+    const handleBorrow = async (bookId) => {
+        try {
+            // 5. Update the borrow call to use 'api'
+            await api.post(`/api/books/borrow/${bookId}`);
+            setBooks(books.map(b => b.book_id === bookId ? {...b, quantity_available: b.quantity_available - 1} : b));
+        } catch (err) {
+            setError('Failed to borrow book.');
+        }
+    };
+
 
     if (!user) {
-        return <div className="flex justify-center items-center min-h-screen">Loading...</div>; // Or a spinner component
+        return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
     }
 
     return (
         <div className="container mx-auto p-4">
             {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
             
-            {/* Header and Navigation */}
             <div className="flex justify-between items-center mb-4">
-                {/* <h1 className="text-3xl font-bold">Available Books</h1> */}
-                 <h2 className="text-3xl  font-bold">
-                    Welcome {user.roles[0]} {user.username}
-                </h2>
+                <div>
+                    <h1 className="text-3xl font-bold">Available Books</h1>
+                    <h2 className="text-xl text-gray-600 mt-1">
+                        Welcome {user.roles.join(' & ')} {user.username}
+                    </h2>
+                </div>
                 <div className="flex items-center gap-2">
                     {user.roles.includes('Admin') && <Link to="/admin/users" className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Admin Panel</Link>}
                     {user.roles.includes('Librarian') && <Link to="/manage-loans" className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded">Manage Loans</Link>}
@@ -72,15 +84,12 @@ const Books = () => {
             </div>
             <hr className="mb-4"/>
 
-            {/* Add New Book Button for Librarians */}
             {user.roles.includes('Librarian') && (
                 <div className="mb-4">
                      <Link to="/books/new" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add New Book</Link>
                 </div>
             )}
 
-
-            {/* Books Table */}
             <div className="shadow-md rounded-lg overflow-hidden">
                 <table className="min-w-full bg-white">
                     <thead className="bg-gray-800 text-white">
@@ -98,25 +107,14 @@ const Books = () => {
                                 <td className="text-left py-3 px-4">{book.author}</td>
                                 <td className="text-left py-3 px-4">{book.quantity_available}</td>
                                 <td className="text-left py-3 px-4 flex gap-2">
-                                    {/* Librarian Actions */}
                                     {user.roles.includes('Librarian') && (
                                         <>
                                             <Link to={`/books/edit/${book.book_id}`} className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-3 rounded text-xs">Edit</Link>
                                             <button onClick={() => handleDelete(book.book_id)} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs">Delete</button>
                                         </>
                                     )}
-                                    {/* Member Actions */}
                                     {user.roles.includes('Member') && book.quantity_available > 0 && (
-                                        <form onSubmit={async (e) => {
-                                            e.preventDefault();
-                                            try {
-                                                await api.post(`/api/books/borrow/${book.book_id}`);
-                                                // Optimistically update the UI
-                                                setBooks(books.map(b => b.book_id === book.book_id ? {...b, quantity_available: b.quantity_available - 1} : b));
-                                            } catch (err) {
-                                                setError('Failed to borrow book.');
-                                            }
-                                        }}>
+                                        <form onSubmit={(e) => { e.preventDefault(); handleBorrow(book.book_id); }}>
                                             <button type="submit" className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-xs">Borrow</button>
                                         </form>
                                     )}

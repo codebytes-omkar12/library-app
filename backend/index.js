@@ -3,17 +3,14 @@ const path = require('path');
 const db = require('./db');
 const bcrypt = require('bcrypt');
 const session = require('express-session');
-const cors = require('cors'); // 1. Import the cors package
+const cors = require('cors');
 const app = express();
 const port = 3000;
 
 // --- Middleware ---
-
-// 2. Configure and use the cors middleware
-// This will allow requests from your frontend on localhost:3001
 app.use(cors({
-    origin: 'http://localhost:3001', // Allow the frontend origin
-    credentials: true // Allow cookies to be sent
+    origin: 'http://localhost:3001',
+    credentials: true
 }));
 
 app.use(express.json());
@@ -48,7 +45,6 @@ const requireRole = (role) => {
         next();
     };
 };
-
 
 // --- API Routes ---
 
@@ -108,7 +104,7 @@ app.put('/api/books/:id', noCache, requireLogin, requireRole('Librarian'), async
     }
 });
 
-// DELETE a book
+// **FIXED** DELETE a book
 app.delete('/api/books/:id', noCache, requireLogin, requireRole('Librarian'), async (req, res) => {
     const bookId = req.params.id;
     const sql = "DELETE FROM books WHERE book_id = ?";
@@ -116,8 +112,12 @@ app.delete('/api/books/:id', noCache, requireLogin, requireRole('Librarian'), as
         await db.query(sql, [bookId]);
         res.json({ success: true, message: 'Book deleted successfully' });
     } catch (err) {
+        // Handle foreign key constraint error specifically
+        if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+            return res.status(400).json({ message: 'Cannot delete a book that is currently on loan. Please return the book first.' });
+        }
         console.error("Database Delete Failed", err);
-        res.status(500).json({ message: "Error Deleting Data" });
+        res.status(500).json({ message: "Error deleting the book." });
     }
 });
 
@@ -185,7 +185,7 @@ app.post('/api/logout', (req, res) => {
         if (err) {
             return res.status(500).json({ message: 'Could not log out, please try again.' });
         }
-        res.clearCookie('connect.sid'); 
+        res.clearCookie('connect.sid');
         res.json({ success: true, message: "Logged out successfully" });
     });
 });
@@ -294,7 +294,7 @@ app.get('/api/admin/users', requireLogin, requireRole('Admin'), async (req, res)
     }
 });
 
-// UPDATE user roles (Admin)
+// **FIXED** UPDATE user roles (Admin)
 app.post('/api/admin/users/update-roles/:id', requireLogin, requireRole('Admin'), async (req, res) => {
     const userIdToUpdate = req.params.id;
     const loggedInUserId = req.session.user.id;
@@ -304,7 +304,7 @@ app.post('/api/admin/users/update-roles/:id', requireLogin, requireRole('Admin')
     }
     try {
         const [adminRoleRows] = await db.query("SELECT role_id FROM roles WHERE role_name='Admin'");
-        const adminRoleId = adminRoleRows[0].role_id;
+        const adminRoleId = adminRoleRows[0].role_id; // Keep as number
         if (Number(userIdToUpdate) === loggedInUserId && !newRoleIds.includes(adminRoleId)) {
             return res.status(400).json({ message: "Error: You cannot remove your own Admin role." });
         }
@@ -330,7 +330,6 @@ app.post('/api/admin/users/update-roles/:id', requireLogin, requireRole('Admin')
         if (connection) connection.release();
     }
 });
-
 
 app.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);
