@@ -1,29 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import api from '../api/axiosConfig.js'
+import React, { useState, useEffect,useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import api from '../api/axiosConfig';
 
 const AdminUsers = () => {
     const [users, setUsers] = useState([]);
     const [allRoles, setAllRoles] = useState([]);
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState(''); // State for success messages
     const navigate = useNavigate();
 
-    useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                const response = await api.get('/api/admin/users');
-                setUsers(response.data.users.map(u => ({ ...u, roles: u.roles ? u.roles.split(',') : [] })));
-                setAllRoles(response.data.allRoles);
-            } catch (err) {
-                 if (err.response && err.response.status === 401) {
-                    navigate('/login');
-                } else {
-                    setError('Could not fetch user data.');
-                }
+    // 1. Create a function to fetch users
+    const fetchUsers = useCallback(async () => {
+        try {
+            const response = await api.get('/api/admin/users');
+            setUsers(response.data.users.map(u => ({ ...u, roles: u.roles ? u.roles.split(',') : [] })));
+            setAllRoles(response.data.allRoles);
+        } catch (err) {
+             if (err.response && err.response.status === 401) {
+                navigate('/login');
+            } else {
+                setError('Could not fetch user data.');
             }
-        };
+        }
+    },[navigate]);
+
+    useEffect(() => {
         fetchUsers();
-    }, [navigate]);
+    }, [fetchUsers]);
 
     const handleRoleChange = (userId, roleName) => {
         setUsers(users.map(user => {
@@ -45,8 +48,11 @@ const AdminUsers = () => {
         }).filter(id => id !== null);
 
         try {
+            setSuccess(''); // Clear previous success messages
+            setError('');   // Clear previous error messages
             await api.post(`/api/admin/users/update-roles/${userId}`, { roles: roleIds });
-            alert('Roles updated successfully!');
+            setSuccess('Roles updated successfully!'); // Set success message
+            fetchUsers(); // 2. Refetch users to ensure UI is in sync
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to update roles.');
         }
@@ -63,13 +69,14 @@ const AdminUsers = () => {
             </div>
             <hr className="mb-4" />
             {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
+            {success && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">{success}</div>}
              <div className="shadow-md rounded-lg overflow-hidden">
                 <table className="min-w-full bg-white">
                     <thead className="bg-gray-800 text-white">
                         <tr>
                             <th className="text-left py-3 px-4 uppercase font-semibold text-sm">Username</th>
                             <th className="text-left py-3 px-4 uppercase font-semibold text-sm">Email</th>
-                            <th className="text-left py-3 px-4 uppercase font-semibold text-sm">Roles</th>
+                            <th className="w-1/3 text-left py-3 px-4 uppercase font-semibold text-sm">Roles</th>
                             <th className="text-left py-3 px-4 uppercase font-semibold text-sm">Action</th>
                         </tr>
                     </thead>

@@ -304,7 +304,7 @@ app.post('/api/admin/users/update-roles/:id', requireLogin, requireRole('Admin')
     }
     try {
         const [adminRoleRows] = await db.query("SELECT role_id FROM roles WHERE role_name='Admin'");
-        const adminRoleId = adminRoleRows[0].role_id.toString();
+        const adminRoleId = adminRoleRows[0].role_id;
         if (Number(userIdToUpdate) === loggedInUserId && !newRoleIds.includes(adminRoleId)) {
             return res.status(400).json({ message: "Error: You cannot remove your own Admin role." });
         }

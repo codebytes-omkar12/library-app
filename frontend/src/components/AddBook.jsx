@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import api from '../api/axiosConfig.js'
 import { useNavigate, Link } from 'react-router-dom';
+import api from '../api/axiosConfig'; // Make sure to use your configured axios instance
 
 const AddBook = () => {
     const [title, setTitle] = useState('');
     const [author, setAuthor] = useState('');
-    const [quantity, setQuantity] = useState(1);
+    const [quantity, setQuantity] = useState(1); // Keep this as a number
     const [error, setError] = useState('');
     const navigate = useNavigate();
 
@@ -51,7 +51,9 @@ const AddBook = () => {
                             type="number"
                             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                             value={quantity}
-                            onChange={(e) => setQuantity(e.target.value)}
+                            // THE FIX IS HERE: Parse the value to an integer.
+                            // Use parseInt() and check for an empty string to avoid NaN.
+                            onChange={(e) => setQuantity(e.target.value === '' ? '' : parseInt(e.target.value, 10))}
                             min="0"
                             required
                         />
